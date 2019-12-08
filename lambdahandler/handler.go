@@ -1,4 +1,4 @@
-package main
+package lambdahandler
 
 import (
 	"context"
@@ -9,12 +9,11 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/nlopes/slack"
 )
 
-func handler(ctx context.Context, event events.CloudWatchEvent) {
+func Handler(ctx context.Context, event events.CloudWatchEvent) {
 	fmt.Println("Start event handling")
 
 	dbHost := os.Getenv("DB_HOST")
@@ -103,8 +102,4 @@ func handler(ctx context.Context, event events.CloudWatchEvent) {
 	}
 	fmt.Printf("Success to post slack channel %s at %s", channelID, timestamp)
 	return
-}
-
-func main() {
-	lambda.Start(handler)
 }
