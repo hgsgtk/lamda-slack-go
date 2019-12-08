@@ -6,13 +6,13 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/pkg/errors"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/nlopes/slack"
 )
 
-func Handler(ctx context.Context, event events.CloudWatchEvent) {
-	fmt.Println("Start event handling")
-
+func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 	// FIXME osenvへの依存
 	db, err := NewDBConn(
 		os.Getenv("DB_HOST"),
@@ -20,21 +20,18 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) {
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_NAME"))
 	if err != nil {
-		fmt.Printf("Failed to get connection with database %#v", err)
-		return
+		return errors.Wrap(err, "Failed to get connection with database")
 	}
 
 	// Query database
 	userNum, err := CountUser(db)
 	if err != nil {
-		fmt.Printf("Error by getting user count %#v\n", err)
-		return
+		return errors.Wrap(err, "Failed by getting user count")
 	}
 
 	totalAmount, err := GetTotalOrder(db)
 	if err != nil {
-		fmt.Printf("Error by getting total amount %v\n", err)
-		return
+		return errors.Wrap(err, "Failed by getting total amount")
 	}
 
 	// slack
@@ -42,18 +39,16 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) {
 	timeoutStr := os.Getenv("SLACK_API_TIMEOUT")
 	timeout, err := strconv.Atoi(timeoutStr)
 	if err != nil {
-		fmt.Printf("Error by configuration %#v", err)
-		return
+		return errors.Wrap(err, "Failed by configuration mistake")
 	}
 
 	slackApi, err := NewSlackCli(
 		os.Getenv("SLACK_ACCESS_TOKEN"), timeout)
 	if err != nil {
-		fmt.Printf("Error by creating slack client")
-		return
+		return errors.Wrap(err, "Failed by creating slack client")
 	}
 	slackChannel := os.Getenv("SLACK_CHANNEL")
-	channelID, timestamp, err := slackApi.PostMessage(
+	_, _, err = slackApi.PostMessage(
 		slackChannel,
 		slack.MsgOptionText("", false),
 		slack.MsgOptionAttachments(slack.Attachment{
@@ -61,9 +56,7 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) {
 			Text:    fmt.Sprintf("新規獲得ユーザー: %d\n累計実績金額: %d", userNum, totalAmount),
 		}))
 	if err != nil {
-		fmt.Printf("Error by sending slack message: %s (detail: %#v)\n", err.Error(), err)
-		return
+		return errors.Wrap(err, "Failed by sending slack message")
 	}
-	fmt.Printf("Success to post slack channel %s at %s", channelID, timestamp)
-	return
+	return nil
 }
