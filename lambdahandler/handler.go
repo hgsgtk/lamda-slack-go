@@ -1,18 +1,16 @@
 package lambdahandler
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/pkg/errors"
 
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/nlopes/slack"
 )
 
-func Handler(ctx context.Context, event events.CloudWatchEvent) error {
+func Handler() error {
 	// FIXME osenvへの依存
 	db, err := NewDBConn(
 		os.Getenv("DB_HOST"),
