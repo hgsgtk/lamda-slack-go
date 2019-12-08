@@ -11,11 +11,16 @@ import (
 )
 
 func Handler() error {
+	dbCon, err := GetSecret()
+	if err != nil {
+		return errors.Wrap(err, "failed to get secret")
+	}
+
 	// FIXME osenvへの依存
 	db, err := NewDBConn(
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
+		dbCon.Host,
+		dbCon.Username,
+		dbCon.Password,
 		os.Getenv("DB_NAME"))
 	if err != nil {
 		return errors.Wrap(err, "failed to get connection with database")
