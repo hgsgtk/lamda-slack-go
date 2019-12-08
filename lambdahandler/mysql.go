@@ -8,43 +8,24 @@ import (
 	"github.com/pkg/errors"
 )
 
-type dbConfig struct {
-	host     string
-	user     string
-	password string
-	name     string
-	sqlMode  string
-	location string
-}
-
-func (c *dbConfig) GetDS() string {
-	return fmt.Sprintf(
-		"%s:%s@tcp(%s:3306)/%s?sql_mode='%s'&parseTime=true&loc=%s",
-		c.user,
-		c.password,
-		c.host,
-		c.name,
-		c.sqlMode,
-		c.location)
-}
-
 const defaultSQLMode = "TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY"
 
 const defaultLoc = "Asia%2FTokyo"
 
 const driverName = "mysql"
 
-func NewDBConn(host, user, password, name string) (*sql.DB, error) {
-	dc := &dbConfig{
-		host:     host,
-		user:     user,
-		password: password,
-		name:     name,
-		sqlMode:  defaultSQLMode,
-		location: defaultLoc,
-	}
+func NewDBConn(config DBConfig) (*sql.DB, error) {
+	ds := fmt.Sprintf(
+		"%s:%s@tcp(%s:%d)/%s?sql_mode='%s'&parseTime=true&loc=%s",
+		config.Username,
+		config.Password,
+		config.Host,
+		config.Port,
+		config.Name,
+		defaultSQLMode,
+		defaultLoc)
 
-	db, err := sql.Open(driverName, dc.GetDS())
+	db, err := sql.Open(driverName, ds)
 	if err != nil {
 		return nil, errors.Wrap(err, "connection database error")
 	}

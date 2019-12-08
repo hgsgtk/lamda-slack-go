@@ -6,11 +6,12 @@ package lambdahandler
 
 import (
 	"encoding/json"
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/pkg/errors"
-	"os"
 )
 
 type DBConfig struct {
@@ -20,17 +21,43 @@ type DBConfig struct {
 	Host                string `json:"host"`
 	Port                int    `json:"port"`
 	DbClusterIdentifier string `json:"dbClusterIdentifier"`
+	Name                string
 }
 
-func GetSecret() (DBConfig, error) {
+func GetDBConfig() (DBConfig, error) {
 	secretName := os.Getenv("DB_SECRET_NAME")
+	if secretName == "" {
+		return DBConfig{}, errors.New("configuration DB_SECRET_NAME is missing")
+	}
 
+	secretString, err := getSecret(secretName)
+	if err != nil {
+		return DBConfig{}, errors.New("failed to get secret by secrets manager")
+	}
+
+	c := DBConfig{}
+	if err := json.Unmarshal([]byte(secretString), &c); err != nil {
+		return DBConfig{}, errors.Wrap(err, "json decode error")
+	}
+
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		return DBConfig{}, errors.New("configuration DB_NAME is missing")
+	}
+	c.Name = dbName
+
+	return c, nil
+}
+
+const defaultVersion = "AWSCURRENT"
+
+func getSecret(secretName string) (string, error) {
 	// Create a Secrets Manager client
 	// FIXME session.New() is deprecated
 	svc := secretsmanager.New(session.New())
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId:     aws.String(secretName),
-		VersionStage: aws.String("AWSCURRENT"), // VersionStage defaults to AWSCURRENT if unspecified
+		VersionStage: aws.String(defaultVersion), // VersionStage defaults to AWSCURRENT if unspecified
 	}
 
 	// In this sample we only handle the specific exceptions for the 'GetSecretValue' API.
@@ -38,22 +65,14 @@ func GetSecret() (DBConfig, error) {
 
 	result, err := svc.GetSecretValue(input)
 	if err != nil {
-		return DBConfig{}, err
+		return "", err
 	}
 
 	// Decrypts secret using the associated KMS CMK.
 	// Depending on whether the secret is a string or binary, one of these fields will be populated.
 	// TODO secretBinaryってどういうときにくるの
-	var secretString string
 	if result.SecretString == nil {
-		return DBConfig{}, errors.New("secret string is empty")
+		return "", errors.New("secret string is empty")
 	}
-	secretString = *result.SecretString
-
-	c := DBConfig{}
-	if err := json.Unmarshal([]byte(secretString), &c); err != nil {
-		return DBConfig{}, errors.Wrap(err, "json decode error")
-	}
-
-	return c, nil
+	return *result.SecretString, nil
 }

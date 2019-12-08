@@ -4,4 +4,7 @@ build:
 deploy: build
 	build-lambda-zip --output handlerFunc.zip handler
 
-.PHONY: build deploy
+fmt:
+	go fmt ./...
+
+.PHONY: build deploy fmt

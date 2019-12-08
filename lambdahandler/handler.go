@@ -11,17 +11,12 @@ import (
 )
 
 func Handler() error {
-	dbCon, err := GetSecret()
+	dbCon, err := GetDBConfig()
 	if err != nil {
 		return errors.Wrap(err, "failed to get secret")
 	}
 
-	// FIXME osenvへの依存
-	db, err := NewDBConn(
-		dbCon.Host,
-		dbCon.Username,
-		dbCon.Password,
-		os.Getenv("DB_NAME"))
+	db, err := NewDBConn(dbCon)
 	if err != nil {
 		return errors.Wrap(err, "failed to get connection with database")
 	}
@@ -40,6 +35,7 @@ func Handler() error {
 	// slack
 	// FIXME osenvへの依存
 	timeoutStr := os.Getenv("SLACK_API_TIMEOUT")
+
 	timeout, err := strconv.Atoi(timeoutStr)
 	if err != nil {
 		return errors.Wrap(err, "failed by configuration mistake")
