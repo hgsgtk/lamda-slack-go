@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/pkg/errors"
+	"os"
 )
 
 type DBConfig struct {
@@ -22,13 +23,11 @@ type DBConfig struct {
 }
 
 func GetSecret() (DBConfig, error) {
-	secretName := "database-camp"
-	region := "ap-northeast-1"
+	secretName := os.Getenv("DB_SECRET_NAME")
 
-	//Create a Secrets Manager client
-	conf := aws.NewConfig()
-	conf.Region = &region
-	svc := secretsmanager.New(session.New(), conf)
+	// Create a Secrets Manager client
+	// FIXME session.New() is deprecated
+	svc := secretsmanager.New(session.New())
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId:     aws.String(secretName),
 		VersionStage: aws.String("AWSCURRENT"), // VersionStage defaults to AWSCURRENT if unspecified
