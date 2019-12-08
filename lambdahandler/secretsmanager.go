@@ -1,12 +1,11 @@
 package lambdahandler
 
-// Use this code snippet in your app.
-// If you need more information about configurations or implementing the sample code, visit the AWS docs:
-// https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/setting-up.html
+// Fixme mixed secrets manager and os env
 
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -47,6 +46,38 @@ func GetDBConfig() (DBConfig, error) {
 	c.Name = dbName
 
 	return c, nil
+}
+
+type SlackConfig struct {
+	AccessToken string
+	Channel     string
+	Timeout     int
+}
+
+func GetSlackConfig() (SlackConfig, error) {
+	secretName := os.Getenv("SLACK_TOKEN_SECRET_NAME")
+	if secretName == "" {
+		return SlackConfig{}, errors.New("configuration DB_SECRET_NAME is missing")
+	}
+
+	token, err := getSecret(secretName)
+	if err != nil {
+		return SlackConfig{}, errors.New("failed to get secret by secrets manager")
+	}
+
+	timeoutStr := os.Getenv("SLACK_API_TIMEOUT")
+	timeout, err := strconv.Atoi(timeoutStr)
+	if err != nil {
+		return SlackConfig{}, errors.Wrap(err, "failed by configuration mistake")
+	}
+
+	channel := os.Getenv("SLACK_CHANNEL")
+
+	return SlackConfig{
+		AccessToken: token,
+		Channel:     channel,
+		Timeout:     timeout,
+	}, nil
 }
 
 const defaultVersion = "AWSCURRENT"

@@ -2,12 +2,8 @@ package lambdahandler
 
 import (
 	"fmt"
-	"os"
-	"strconv"
-
-	"github.com/pkg/errors"
-
 	"github.com/nlopes/slack"
+	"github.com/pkg/errors"
 )
 
 func Handler() error {
@@ -33,22 +29,17 @@ func Handler() error {
 	}
 
 	// slack
-	// FIXME osenvへの依存
-	timeoutStr := os.Getenv("SLACK_API_TIMEOUT")
-
-	timeout, err := strconv.Atoi(timeoutStr)
+	sConf, err := GetSlackConfig()
 	if err != nil {
-		return errors.Wrap(err, "failed by configuration mistake")
+		return errors.Wrap(err, "failed by get secret")
 	}
 
-	slackApi, err := NewSlackCli(
-		os.Getenv("SLACK_ACCESS_TOKEN"), timeout)
+	slackApi, err := NewSlackCli(sConf.AccessToken, sConf.Timeout)
 	if err != nil {
 		return errors.Wrap(err, "failed by creating slack client")
 	}
-	slackChannel := os.Getenv("SLACK_CHANNEL")
 	_, _, err = slackApi.PostMessage(
-		slackChannel,
+		sConf.Channel,
 		slack.MsgOptionText("", false),
 		slack.MsgOptionAttachments(slack.Attachment{
 			Pretext: "本日のKPI達成状況はこちらです",
