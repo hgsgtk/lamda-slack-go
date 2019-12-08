@@ -18,18 +18,18 @@ func Handler() error {
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_NAME"))
 	if err != nil {
-		return errors.Wrap(err, "Failed to get connection with database")
+		return errors.Wrap(err, "failed to get connection with database")
 	}
 
 	// Query database
 	userNum, err := CountUser(db)
 	if err != nil {
-		return errors.Wrap(err, "Failed by getting user count")
+		return errors.Wrap(err, "failed by getting user count")
 	}
 
 	totalAmount, err := GetTotalOrder(db)
 	if err != nil {
-		return errors.Wrap(err, "Failed by getting total amount")
+		return errors.Wrap(err, "failed by getting total amount")
 	}
 
 	// slack
@@ -37,13 +37,13 @@ func Handler() error {
 	timeoutStr := os.Getenv("SLACK_API_TIMEOUT")
 	timeout, err := strconv.Atoi(timeoutStr)
 	if err != nil {
-		return errors.Wrap(err, "Failed by configuration mistake")
+		return errors.Wrap(err, "failed by configuration mistake")
 	}
 
 	slackApi, err := NewSlackCli(
 		os.Getenv("SLACK_ACCESS_TOKEN"), timeout)
 	if err != nil {
-		return errors.Wrap(err, "Failed by creating slack client")
+		return errors.Wrap(err, "failed by creating slack client")
 	}
 	slackChannel := os.Getenv("SLACK_CHANNEL")
 	_, _, err = slackApi.PostMessage(
@@ -54,7 +54,7 @@ func Handler() error {
 			Text:    fmt.Sprintf("新規獲得ユーザー: %d\n累計実績金額: %d", userNum, totalAmount),
 		}))
 	if err != nil {
-		return errors.Wrap(err, "Failed by sending slack message")
+		return errors.Wrap(err, "failed by sending slack message")
 	}
 	return nil
 }
