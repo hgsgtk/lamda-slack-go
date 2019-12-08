@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/nlopes/slack"
@@ -38,13 +39,20 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) {
 
 	// slack
 	// FIXME osenvへの依存
-	slackChannel := os.Getenv("SLACK_CHANNEL")
-	slackApi, err := NewSlackCli(os.Getenv("SLACK_ACCESS_TOKEN"))
+	timeoutStr := os.Getenv("SLACK_API_TIMEOUT")
+	timeout, err := strconv.Atoi(timeoutStr)
+	if err != nil {
+		fmt.Printf("Error by configuration %#v", err)
+		return
+	}
+
+	slackApi, err := NewSlackCli(
+		os.Getenv("SLACK_ACCESS_TOKEN"), timeout)
 	if err != nil {
 		fmt.Printf("Error by creating slack client")
 		return
 	}
-
+	slackChannel := os.Getenv("SLACK_CHANNEL")
 	channelID, timestamp, err := slackApi.PostMessage(
 		slackChannel,
 		slack.MsgOptionText("", false),

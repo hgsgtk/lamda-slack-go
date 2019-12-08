@@ -8,11 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewSlackCli(token string) (*slack.Client, error) {
+func NewSlackCli(token string, timeout int) (*slack.Client, error) {
 	httpClient := http.Client{
 		// lambdaが死ぬ前にタイムアウトするように設定をしておく
-		// FIXME configを外へ
-		Timeout: time.Duration(time.Second * 3),
+		Timeout: time.Duration(time.Second * time.Duration(timeout)),
 	}
 	cli := slack.New(token, slack.OptionHTTPClient(&httpClient))
 
