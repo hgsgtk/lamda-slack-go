@@ -2,90 +2,46 @@ package lambdahandler
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/nlopes/slack"
 )
 
 func Handler(ctx context.Context, event events.CloudWatchEvent) {
 	fmt.Println("Start event handling")
 
-	dbHost := os.Getenv("DB_HOST")
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_NAME")
-	sqlMode := "TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY"
-	loc := "Asia%2FTokyo"
-
-	// Connection database
-	ds := fmt.Sprintf(
-		"%s:%s@tcp(%s:3306)/%s?sql_mode='%s'&parseTime=true&loc=%s",
-		dbUser,
-		dbPassword,
-		dbHost,
-		dbName,
-		sqlMode,
-		loc)
-	db, err := sql.Open("mysql", ds)
+	// FIXME osenvへの依存
+	db, err := NewDBConn(
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error by connection database %#v\n", err)
+		fmt.Printf("Failed to get connection with database %#v", err)
 		return
 	}
-
-	if err := db.Ping(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error by ping database %#v\n", err)
-		defer db.Close()
-		return
-	}
-	fmt.Println("Success to connect database")
 
 	// Query database
-	// KPI 新規獲得ユーザー数
-	q := `SELECT count(*) from users`
-
-	stmt, err := db.Prepare(q)
+	userNum, err := CountUser(db)
 	if err != nil {
-		fmt.Printf("Error by preparing statement %#v\n", err)
+		fmt.Printf("Error by getting user count %#v\n", err)
 		return
 	}
 
-	var userNum int
-	if err := stmt.QueryRow().Scan(&userNum); err != nil {
-		fmt.Printf("Error by quering and scanning database %#v\n", err)
-		return
-	}
-	// KPI 累計実績金額
-	q = `SELECT sum(amount) from orders`
-
-	stmt, err = db.Prepare(q)
+	totalAmount, err := GetTotalOrder(db)
 	if err != nil {
-		fmt.Printf("Error by preparing statement %#v\n", err)
-		return
-	}
-
-	var totalAmount int
-	if err := stmt.QueryRow().Scan(&totalAmount); err != nil {
-		fmt.Printf("Error by quering and scanning database %#v\n", err)
+		fmt.Printf("Error by getting total amount %v\n", err)
 		return
 	}
 
 	// slack
-	accessToken := os.Getenv("SLACK_ACCESS_TOKEN")
+	// FIXME osenvへの依存
 	slackChannel := os.Getenv("SLACK_CHANNEL")
-	httpClient := http.Client{
-		// タイムアウト設定をしておく
-		Timeout: time.Duration(time.Second * 3),
-	}
-	slackApi := slack.New(accessToken, slack.OptionHTTPClient(&httpClient))
-
-	if _, err := slackApi.AuthTest(); err != nil {
-		fmt.Printf("Error by getting auth; %s detail %#v", err.Error(), err)
+	slackApi, err := NewSlackCli(os.Getenv("SLACK_ACCESS_TOKEN"))
+	if err != nil {
+		fmt.Printf("Error by creating slack client")
 		return
 	}
 
